@@ -5,11 +5,12 @@ import plotly.express as px
 import os
 import io
 import datetime
+import matplotlib.pyplot as plt
 
 # ReportLab (PDF)
+from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.utils import ImageReader
 
 
 # ==============================
@@ -28,10 +29,9 @@ MAX_YEAR = 2025
 def load_and_clean(path):
     df = pd.read_csv(path)
 
-    df = df.loc[:, ~df.columns.duplicated()]  # columnas duplicadas
+    df = df.loc[:, ~df.columns.duplicated()]  
     df.columns = [c.strip() for c in df.columns]
 
-    # Normalizar y mapear nombres
     col_map = {}
     for c in df.columns:
         low = c.lower()
@@ -74,45 +74,57 @@ def load_and_clean(path):
 
 
 # ==============================
+# PLOTLY → PNG usando Matplotlib (SIN KALEIDO)
+# ==============================
+def plotly_to_png(fig):
+    buf = io.BytesIO()
+    plt.figure(figsize=(6,4))
+
+    for trace in fig.data:
+        if trace.type == "bar":
+            plt.bar(trace.x, trace.y)
+        elif trace.type == "scatter":
+            plt.plot(trace.x, trace.y)
+        elif trace.type == "histogram":
+            plt.hist(trace.x)
+
+    plt.title(fig.layout.title.text if fig.layout.title.text else "")
+    plt.tight_layout()
+    plt.savefig(buf, format="png")
+    plt.close()
+    buf.seek(0)
+    return buf
+
+
+# ==============================
 # GENERACIÓN DEL PDF
 # ==============================
-def generate_pdf_report(df, fig_hist, fig_year, fig_gen, fig_rbd):
+def generate_pdf_report(fig1, fig2, fig3, fig4):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    c = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
 
-    styles = getSampleStyleSheet()
-    story = []
+    # convertir figuras
+    img1 = ImageReader(plotly_to_png(fig1))
+    img2 = ImageReader(plotly_to_png(fig2))
+    img3 = ImageReader(plotly_to_png(fig3))
+    img4 = ImageReader(plotly_to_png(fig4))
 
-    # Título
-    story.append(Paragraph("<b>Informe de Análisis IMDb</b>", styles["Title"]))
-    story.append(Paragraph(datetime.datetime.now().strftime("%d/%m/%Y"), styles["Normal"]))
-    story.append(Spacer(1, 12))
+    c.drawString(30, height - 40, "Informe del Proyecto IMDb")
 
-    # --- Gráfico 1 ---
-    story.append(Paragraph("<b>Distribución de Ratings</b>", styles["Heading2"]))
-    img_bytes = fig_hist.to_image(format="png")
-    story.append(Image(io.BytesIO(img_bytes), width=500, height=300))
-    story.append(Spacer(1, 12))
+    c.drawImage(img1, 30, height - 300, width=550, preserveAspectRatio=True)
+    c.showPage()
 
-    # --- Gráfico 2 ---
-    story.append(Paragraph("<b>Películas por Año</b>", styles["Heading2"]))
-    img_bytes = fig_year.to_image(format="png")
-    story.append(Image(io.BytesIO(img_bytes), width=500, height=300))
-    story.append(Spacer(1, 12))
+    c.drawImage(img2, 30, height - 300, width=550, preserveAspectRatio=True)
+    c.showPage()
 
-    # --- Gráfico 3 ---
-    story.append(Paragraph("<b>Conteo por Género</b>", styles["Heading2"]))
-    img_bytes = fig_gen.to_image(format="png")
-    story.append(Image(io.BytesIO(img_bytes), width=500, height=300))
-    story.append(Spacer(1, 12))
+    c.drawImage(img3, 30, height - 300, width=550, preserveAspectRatio=True)
+    c.showPage()
 
-    # --- Gráfico 4 ---
-    story.append(Paragraph("<b>Rating promedio por década</b>", styles["Heading2"]))
-    img_bytes = fig_rbd.to_image(format="png")
-    story.append(Image(io.BytesIO(img_bytes), width=500, height=300))
-    story.append(Spacer(1, 12))
+    c.drawImage(img4, 30, height - 300, width=550, preserveAspectRatio=True)
+    c.showPage()
 
-    doc.build(story)
+    c.save()
     buffer.seek(0)
     return buffer
 
@@ -242,7 +254,7 @@ elif menu == 'Conclusiones':
 
     st.markdown("### 📄 Exportar reporte en PDF")
 
-    pdf_buffer = generate_pdf_report(df_filtered, fig_hist, fig_year, fig_gen, fig_rbd)
+    pdf_buffer = generate_pdf_report(fig_hist, fig_year, fig_gen, fig_rbd)
 
     st.download_button(
         label="Descargar PDF",
