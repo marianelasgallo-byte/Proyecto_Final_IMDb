@@ -232,23 +232,20 @@ elif menu == 'Visualizaciones':
     st.subheader('Distribución de ratings (IMDb)')
     fig_hist = px.histogram(df_filtered, x='rating', nbins=30, title='Histograma de ratings IMDb', labels={'rating':'Rating IMDb'})
     st.plotly_chart(fig_hist, use_container_width=True)
-    fig_hist.write_image('hist_rating.png')
-
+    
     # Visualización 2: Películas por año
     st.subheader('Películas por año')
     movies_per_year = df_filtered.groupby('year').size().reset_index(name='count')
     fig_year = px.line(movies_per_year, x='year', y='count', markers=True, title='Películas por año')
     st.plotly_chart(fig_year, use_container_width=True)
-    fig_year.write_image('movies_per_year.png')
-
+    
     # Visualización 3: Top géneros (barras)
     st.subheader('Top géneros')
     top_genres = df_filtered['genre'].value_counts().reset_index()
     top_genres.columns = ['genre', 'count']
     fig_gen = px.bar(top_genres.head(20), x='count', y='genre', orientation='h', title='Top géneros por cantidad')
     st.plotly_chart(fig_gen, use_container_width=True)
-    fig_gen.write_image('genre_counts.png')
-
+ 
     # Visualización 4: Rating promedio por género por década
     st.subheader('Rating promedio por género por década')
     # Agrupar por genre y decade
@@ -260,7 +257,6 @@ elif menu == 'Visualizaciones':
         rbd_plot = rbd[rbd['genre'].isin(genres_to_plot)]
         fig_rbd = px.line(rbd_plot, x='decade', y='rating', color='genre', markers=True, title='Rating promedio por década (por género)', labels={'decade':'Década','rating':'Rating promedio'})
         st.plotly_chart(fig_rbd, use_container_width=True)
-        fig_rbd.write_image('rating_by_decade.png')
     else:
         st.info('Selecciona al menos un género para ver la serie temporal por década.')
 
